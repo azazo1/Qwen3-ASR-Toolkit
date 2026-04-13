@@ -155,14 +155,15 @@ class QwenASR:
                 language = language_code_mapping.get(lang_code, "Not Supported")
 
                 return language, self.post_text_process(recog_text)
-            except Exception as e:
+            except Exception as e1:
+                print(f"Error: {e1}")
                 try:
                     print(f"Retry {_ + 1}...  {wav_url}\n{response}")
                     if response.code == "DataInspectionFailed":
                         print(f"DataInspectionFailed! Invalid input audio \"{wav_url}\"")
                         break
-                except Exception as e:
-                    print(f"Retry {_ + 1}...  {wav_url}\n{e}")
+                except Exception as e2:
+                    print(f"Retry {_ + 1}...  {wav_url}\n{e2}")
             time.sleep(random.uniform(*API_RETRY_SLEEP))
         raise Exception(f"{wav_url} task failed!\n{response}")
 
