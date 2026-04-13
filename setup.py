@@ -13,7 +13,8 @@ setup(
         'pydub',
         'tqdm',
         'numpy',
-        'srt'
+        'srt',
+        'onnxruntime'
     ],
     entry_points={
         'console_scripts': [
