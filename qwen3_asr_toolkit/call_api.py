@@ -30,6 +30,7 @@ def parse_args():
 
 
 def main():
+    os.environ["HTTPS_PROXY"] = os.environ["HTTP_PROXY"] = os.environ["https_proxy"] = os.environ["http_proxy"] = ""
     args = parse_args()
     input_file = args.input_file
     context = args.context
