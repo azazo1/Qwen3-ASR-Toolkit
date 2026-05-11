@@ -101,7 +101,7 @@ Once installed, you can use the `qwen3-asr` command directly from your terminal.
 ### Command
 
 ```bash
-qwen3-asr -i <input_file_or_url> [-key <api_key>] [-j <num_threads>] [-c <context>] [-d <duration>] [-t <tmp_dir>] [--save-srt] [-s]
+qwen3-asr -i <input_file_or_url> [-key <api_key>] [-j <num_threads>] [-c <context>] [-l <language>] [-d <duration>] [-t <tmp_dir>] [--save-srt] [-s]
 ```
 
 ### Arguments
@@ -110,12 +110,15 @@ qwen3-asr -i <input_file_or_url> [-key <api_key>] [-j <num_threads>] [-c <contex
 | ------------------------- | ------ | ------------------------------------------------------------------------------------ | ---------------------------------------- |
 | `--input-file`            | `-i`   | Path to the local media file or a remote URL (http/https) to transcribe.             | **Required**                             |
 | `--context`               | `-c`   | Text context to guide the ASR model, improving recognition of specific terms.        | Optional, Default: `""`                  |
+| `--language`              | `-l`   | Manually specify a single language such as `zh`, `en`, `Chinese`, `English`, `中文`. | Optional                                 |
 | `--dashscope-api-key`     | `-key` | Your DashScope API Key.                                                              | Optional (if `DASHSCOPE_API_KEY` is set) |
 | `--num-threads`           | `-j`   | The number of concurrent threads to use for API calls.                               | Optional, **Default: 4**                 |
 | `--vad-segment-threshold` | `-d`   | Target duration in seconds for each VAD-split audio chunk.                           | Optional, **Default: 120**               |
 | `--tmp-dir`               | `-t`   | Path to a directory for storing temporary chunk files.                               | Optional, Default: `~/qwen3-asr-cache`   |
 | `--save-srt`              | `-srt` | Generate and save a timestamped SRT subtitle file in addition to the `.txt` file.    | Optional                                 |
 | `--silence`               | `-s`   | Silence mode. Suppresses detailed progress and chunking information on the terminal. | Optional                                 |
+
+Use `--language` only when the audio is primarily a single language. Leave it unset for mixed-language audio so the API can perform language identification automatically.
 
 ### Output
 
@@ -177,6 +180,14 @@ Use the `-s` or `--silence` flag to prevent progress details from being printed 
 
 ```bash
 qwen3-asr -i "/path/to/my/meeting_recording.m4a" -s
+```
+
+#### 7. Force a Specific Language
+
+If you already know the audio language, you can set `-l` or `--language` to reduce ambiguity during recognition.
+
+```bash
+qwen3-asr -i "/path/to/my/interview.mp3" -l zh
 ```
 
 ## 🌍 Implementations in Other Languages

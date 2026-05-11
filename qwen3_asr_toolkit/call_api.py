@@ -1,39 +1,50 @@
 import argparse
 import os
-import srt
-import requests
-import dashscope
 import concurrent.futures
 
-from tqdm import tqdm
 from datetime import timedelta
 from collections import Counter
 from urllib.parse import urlparse
-from silero_vad import load_silero_vad
-from qwen3_asr_toolkit.qwen3asr import QwenASR
-from qwen3_asr_toolkit.audio_tools import load_audio, process_vad, save_audio_file, WAV_SAMPLE_RATE
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description="Python toolkit for the Qwen3-ASR API—parallel high‑throughput calls, robust long‑audio transcription, multi‑sample‑rate support."
     )
     parser.add_argument("--input-file", '-i', type=str, required=True, help="Input media file path")
     parser.add_argument("--context", '-c', type=str, default="", help="Any text context content for Qwen3-ASR-Flash")
+    parser.add_argument(
+        "--language",
+        "-l",
+        type=str,
+        default=None,
+        help="Manually specify a single language such as zh, en, Chinese, or English. Do not set this for mixed-language audio."
+    )
     parser.add_argument("--dashscope-api-key", '-key', type=str, help="DashScope API key")
     parser.add_argument("--num-threads", '-j', type=int, default=4, help="Number of threads to use for parallel calls")
     parser.add_argument("--vad-segment-threshold", '-d', type=int, default=120, help="Segment threshold seconds for VAD")
     parser.add_argument("--tmp-dir", '-t', type=str, default=os.path.join(os.path.expanduser("~"), "qwen3-asr-cache"), help="Temp directory path")
     parser.add_argument("--save-srt", '-srt', action="store_true", help="Save SRT subtitle file")
     parser.add_argument("--silence", '-s', action="store_true", help="Reduce the output info on the terminal")
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def main():
+    import dashscope
+    import requests
+    import srt
+
+    from tqdm import tqdm
+    from silero_vad import load_silero_vad
+
+    from qwen3_asr_toolkit.qwen3asr import QwenASR
+    from qwen3_asr_toolkit.audio_tools import load_audio, process_vad, save_audio_file, WAV_SAMPLE_RATE
+
     os.environ["HTTPS_PROXY"] = os.environ["HTTP_PROXY"] = os.environ["https_proxy"] = os.environ["http_proxy"] = ""
     args = parse_args()
     input_file = args.input_file
     context = args.context
+    language = args.language
     dashscope_api_key = args.dashscope_api_key
     num_threads = args.num_threads
     vad_segment_threshold = args.vad_segment_threshold
@@ -90,7 +101,7 @@ def main():
     languages = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
         future_dict = {
-            executor.submit(qwen3asr.asr, wav_path, context): idx
+            executor.submit(qwen3asr.asr, wav_path, context, language): idx
             for idx, wav_path in enumerate(wav_path_list)
         }
         if not silence:

@@ -1,7 +1,9 @@
 import os
+import re
 import time
 import random
 import dashscope
+from typing import Optional
 
 from pydub import AudioSegment
 
@@ -12,17 +14,146 @@ API_RETRY_SLEEP = (1, 2)
 
 language_code_mapping = {
     "ar": "Arabic",
-    "zh": "Chinese",
-    "en": "English",
-    "fr": "French",
+    "cs": "Czech",
+    "da": "Danish",
     "de": "German",
+    "en": "English",
+    "es": "Spanish",
+    "fi": "Finnish",
+    "fil": "Filipino",
+    "fr": "French",
+    "hi": "Hindi",
+    "id": "Indonesian",
+    "is": "Icelandic",
     "it": "Italian",
     "ja": "Japanese",
     "ko": "Korean",
+    "ms": "Malay",
+    "no": "Norwegian",
+    "pl": "Polish",
     "pt": "Portuguese",
     "ru": "Russian",
-    "es": "Spanish"
+    "sv": "Swedish",
+    "th": "Thai",
+    "tr": "Turkish",
+    "uk": "Ukrainian",
+    "vi": "Vietnamese",
+    "yue": "Cantonese",
+    "zh": "Chinese"
 }
+
+
+language_alias_mapping = {
+    "ar": "ar",
+    "arabic": "ar",
+    "cs": "cs",
+    "czech": "cs",
+    "da": "da",
+    "danish": "da",
+    "de": "de",
+    "german": "de",
+    "en": "en",
+    "eng": "en",
+    "english": "en",
+    "es": "es",
+    "spanish": "es",
+    "fi": "fi",
+    "finnish": "fi",
+    "fil": "fil",
+    "filipino": "fil",
+    "fr": "fr",
+    "french": "fr",
+    "hi": "hi",
+    "hindi": "hi",
+    "id": "id",
+    "indonesian": "id",
+    "is": "is",
+    "icelandic": "is",
+    "it": "it",
+    "italian": "it",
+    "ja": "ja",
+    "japanese": "ja",
+    "ko": "ko",
+    "korean": "ko",
+    "ms": "ms",
+    "malay": "ms",
+    "no": "no",
+    "norwegian": "no",
+    "pl": "pl",
+    "polish": "pl",
+    "pt": "pt",
+    "portuguese": "pt",
+    "ru": "ru",
+    "russian": "ru",
+    "sv": "sv",
+    "swedish": "sv",
+    "th": "th",
+    "thai": "th",
+    "tr": "tr",
+    "turkish": "tr",
+    "uk": "uk",
+    "ukrainian": "uk",
+    "vi": "vi",
+    "vietnamese": "vi",
+    "yue": "yue",
+    "cantonese": "yue",
+    "zh": "zh",
+    "cn": "zh",
+    "zh-cn": "zh",
+    "mandarin": "zh",
+    "putonghua": "zh",
+    "chinese": "zh",
+    "中文": "zh",
+    "汉语": "zh",
+    "普通话": "zh",
+    "粤语": "yue",
+    "英文": "en",
+    "英语": "en",
+    "日语": "ja",
+    "德语": "de",
+    "韩语": "ko",
+    "俄语": "ru",
+    "法语": "fr",
+    "葡萄牙语": "pt",
+    "阿拉伯语": "ar",
+    "意大利语": "it",
+    "西班牙语": "es",
+    "印地语": "hi",
+    "印尼语": "id",
+    "泰语": "th",
+    "土耳其语": "tr",
+    "乌克兰语": "uk",
+    "越南语": "vi",
+    "捷克语": "cs",
+    "丹麦语": "da",
+    "菲律宾语": "fil",
+    "芬兰语": "fi",
+    "冰岛语": "is",
+    "马来语": "ms",
+    "挪威语": "no",
+    "波兰语": "pl",
+    "瑞典语": "sv"
+}
+
+
+def normalize_language_code(language: Optional[str]) -> Optional[str]:
+    if language is None:
+        return None
+
+    normalized = language.strip().lower().replace("_", "-")
+    if not normalized:
+        return None
+
+    if normalized in language_alias_mapping:
+        return language_alias_mapping[normalized]
+
+    if re.fullmatch(r"[a-z]{2,3}(?:-[a-z]{2,3})?", normalized):
+        return normalized
+
+    supported_codes = ", ".join(sorted(language_code_mapping))
+    raise ValueError(
+        f"Unsupported language '{language}'. Use one of the API language codes: {supported_codes}."
+    )
 
 
 class QwenASR:
@@ -96,7 +227,9 @@ class QwenASR:
         text = fix_char_repeats(text, threshold)
         return fix_pattern_repeats(text, threshold)
 
-    def asr(self, wav_url: str, context: str = ""):
+    def asr(self, wav_url: str, context: str = "", language: Optional[str] = None):
+        normalized_language = normalize_language_code(language)
+
         if not wav_url.startswith("http"):
             assert os.path.exists(wav_url), f"{wav_url} not exists!"
             file_path = wav_url
@@ -129,14 +262,18 @@ class QwenASR:
                         ]
                     }
                 ]
+                asr_options = {
+                    "enable_lid": True,
+                    "enable_itn": False
+                }
+                if normalized_language is not None:
+                    asr_options["language"] = normalized_language
+
                 response = dashscope.MultiModalConversation.call(
                     model=self.model,
                     messages=messages,
                     result_format="message",
-                    asr_options={
-                        "enable_lid": True,
-                        "enable_itn": False
-                    }
+                    asr_options=asr_options
                 )
 
                 if response.status_code != 200:
@@ -152,6 +289,8 @@ class QwenASR:
                 lang_code = None
                 if "annotations" in output["message"]:
                     lang_code = output["message"]["annotations"][0]["language"]
+                if lang_code is None:
+                    lang_code = normalized_language
                 language = language_code_mapping.get(lang_code, "Not Supported")
 
                 return language, self.post_text_process(recog_text)
